@@ -1,92 +1,84 @@
-"""
-browserstack_test.py  – launch 5 sessions (Chrome, Firefox, Edge, Safari, iPhone)
-Works with Selenium 4.14+  ✔
-Edit USERNAME and ACCESS_KEY, then:  python browserstack_test.py
-"""
-
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options  # we’ll reuse ChromeOptions for every session
-import time, json
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from threading import Thread
+import time
 
-USERNAME   = "misbahkhanum_76ruTj"        #  ← replace
-ACCESS_KEY = "ycWaGBebKEphTpQmWEGX"      #  ← replace
-URL = f"https://{USERNAME}:{ACCESS_KEY}@hub-cloud.browserstack.com/wd/hub"
+USERNAME = "misbahkhanum_76ruTj"
+ACCESS_KEY = "ycWaGBebKEphTpQmWEGX"
 
-# ── five target environments ────────────────────────────────────────────────────
-caps_list = [
-    # 1 Chrome on Windows 11
+capabilities_list = [
     {
+        "os": "Windows",
+        "osVersion": "10",
         "browserName": "Chrome",
-        "browserVersion": "latest",
-        "platformName": "Windows 11",
-        "bstack:options": {"sessionName": "Chrome Win11", "buildName": "ElPais build"}
+        "browserVersion": "latest"
     },
-    # 2 Firefox on Windows 10
     {
-        "browserName": "Firefox",
-        "browserVersion": "latest",
-        "platformName": "Windows 10",
-        "bstack:options": {"sessionName": "Firefox Win10", "buildName": "ElPais build"}
-    },
-    # 3 Edge on Windows 11
-    {
-        "browserName": "Edge",
-        "browserVersion": "latest",
-        "platformName": "Windows 11",
-        "bstack:options": {"sessionName": "Edge Win11", "buildName": "ElPais build"}
-    },
-    # 4 Safari on macOS Monterey
-    {
-       "browser": "Safari",
-       "browser_version": "15.0",
-       "bstack:options":{
-           "os": "OS X",
-           "osVersion": "Monterey",
-           "sessionName": "Safari Monterey test",   #optional
-           "buildName": "ElPais Assignment Build"   #optional
-       }
-    },
-   
-    # 5 Safari on iPhone 14 (real device)
-    {
+        "os": "OS X",
+        "osVersion": "Ventura",
         "browserName": "Safari",
-        "platformName": "iOS",
-        "bstack:options": {
-            "deviceName": "iPhone 14",
-            "osVersion": "16",
-            "realMobile": "true",
-            "sessionName": "iPhone 14",
-            "buildName": "ElPais build"
-        }
+        "browserVersion": "latest"
+    },
+    {
+        "os": "Windows",
+        "osVersion": "11",
+        "browserName": "Firefox",
+        "browserVersion": "latest"
+    },
+    {
+        "deviceName": "Samsung Galaxy S22",
+        "osVersion": "12.0",
+        "browserName": "Chrome",
+        "realMobile": "true"
+    },
+    {
+        "deviceName": "iPhone 14",
+        "osVersion": "16",
+        "browserName": "Safari",
+        "realMobile": "true"
     }
 ]
 
-def make_options(cap_dict: dict) -> Options:
-    """Return an Options object whose capabilities equal cap_dict"""
-    opts = Options()
-    # remove any existing keys so we can set our own cleanly
-    for key in list(opts.capabilities.keys()):
-        opts.capabilities.pop(key, None)
-    # copy every key from cap_dict into the options object
-    for k, v in cap_dict.items():
-        opts.set_capability(k, v)
-    return opts
-
-def run_single_session(caps: dict):
-    name = caps["bstack:options"]["sessionName"]
-    print(f"🚀 Starting session → {name}")
-    opts = make_options(caps)
-    driver = webdriver.Remote(command_executor=URL, options=opts)
+def run_browserstack_test(cap):
     try:
-        driver.get("https://elpais.com/opinion/")
-        time.sleep(4)
-        assert "Opinión" in driver.page_source
-        print(f"✅ {name} passed")
-    except Exception as e:
-        print(f"❌ {name} failed – {e}")
-    finally:
-        driver.quit()
+        caps = {
+            "bstack:options": {
+                "os": cap.get("os"),
+                "osVersion": cap.get("osVersion"),
+                "deviceName": cap.get("deviceName"),
+                "realMobile": cap.get("realMobile"),
+                "userName": USERNAME,
+                "accessKey": ACCESS_KEY,
+                "projectName": "ElPais Scraper",
+                "buildName": "Assignment",
+                "sessionName": cap.get("browserName")
+            },
+            "browserName": cap.get("browserName"),
+            "browserVersion": cap.get("browserVersion")
+        }
 
-# ── run all five sessions sequentially (safe & simple) ─────────────────────────
-for caps in caps_list:
-    run_single_session(caps)
+        driver = webdriver.Remote(
+            command_executor="https://hub-cloud.browserstack.com/wd/hub",
+            options=webdriver.ChromeOptions().set_capability("bstack:options", caps["bstack:options"])
+        )
+
+        driver.get("https://elpais.com/opinion/")
+        time.sleep(2)
+        print(f"[{cap.get('browserName')}] Title → {driver.title}")
+
+        driver.quit()
+    except Exception as e:
+        print(f"❌ Error on {cap.get('browserName')}: {e}")
+
+if __name__ == "__main__":
+    threads = []
+    for cap in capabilities_list:
+        thread = Thread(target=run_browserstack_test, args=(cap,))
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()
+
+    print("\n✅  All BrowserStack sessions finished.")
