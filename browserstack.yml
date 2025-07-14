@@ -1,0 +1,34 @@
+browserstack:
+  userName: misbahkhanum_76ruTj
+  accessKey: ycWaGBebKEphTpQmWEGX
+
+  buildName: "My First Build"
+  projectName: "My Selenium Project"
+
+  framework: "python"
+
+  source: "python:sdk"  # Important to help SDK identify properly
+
+  platforms:
+    - os: "Windows"
+      osVersion: "10"
+      browserName: "chrome"
+      browserVersion: "latest"
+    - os: "OS X"
+      osVersion: "Ventura"
+      browserName: "safari"
+      browserVersion: "latest"
+    - deviceName: "iPhone 14"
+      osVersion: "16"
+      browserName: "ios"
+      realMobile: true
+
+  run_settings:
+    cypressProjectDir: "."
+    testObservability: true
+    buildIdentifier: "${BUILD_NUMBER}" # Optional
+
+  reporting:
+    testRunName: "Google Test"
+    testRunIdentifier: "test-identifier"
+
